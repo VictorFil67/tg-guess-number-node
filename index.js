@@ -12,43 +12,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-let randomNumber;
-
-// bot.on("message", (msg) => {
-//   const chatId = msg.chat.id;
-//   const text = msg.text;
-//   const number = Number(text);
-//   const from = msg.from.first_name;
-//   console.log(msg);
-
-//   if (text === "/start") {
-//     randomNumber = Math.floor(Math.random() * 10);
-//   }
-//   if (number < randomNumber) {
-//     bot.sendMessage(
-//       chatId,
-//       `You lost. Your ${number} is less then ${randomNumber}`
-//     );
-//   } else if (number === randomNumber) {
-//     bot.sendMessage(
-//       chatId,
-//       `You won. Your  ${number} is equal ${randomNumber}`
-//     );
-//   } else if (number > randomNumber) {
-//     bot.sendMessage(
-//       chatId,
-//       `You lost. Your  ${number} is more then ${randomNumber}`
-//     );
-//   } else {
-//     bot.sendMessage(chatId, `Please enter the number!`);
-//   }
-//   console.log(randomNumber);
-// });
+let games = {};
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-
-  // Отправка сообщения с кнопкой для открытия игры
+  console.log(chatId);
   bot.sendMessage(chatId, "Натисніть кнопку, щоб грати в гру 'Вгадай число'", {
     reply_markup: {
       inline_keyboard: [[{ text: "Грати", web_app: { url: webAppUrl } }]],
@@ -56,7 +24,39 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// const PORT = process.env.PORT || 5000;
+app.post("/guess", (req, res) => {
+  const { chatId, guess } = req.body;
+
+  if (!games[chatId]) {
+    return res.status(400).json({
+      message:
+        "Гра не знайдена. Використовуйте команду /start, щоб почати нову гру.",
+    });
+  }
+
+  const game = games[chatId];
+  game.attempts += 1;
+
+  if (guess < game.number) {
+    res.json({ result: "Загадане число більше" });
+  } else if (guess > game.number) {
+    res.json({ result: "Загадане число менше" });
+  } else {
+    res.json({ result: "Число вгадано!", attempts: game.attempts });
+    delete games[chatId];
+    console.log(chatId);
+  }
+});
+
+app.post("/start_game", (req, res) => {
+  const chatId = req.body.chatId;
+
+  const randomNumber = Math.floor(Math.random() * 100) + 1;
+  games[chatId] = { number: randomNumber, attempts: 0 };
+
+  res.json({ message: "Нова гра розпочата!" });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
